@@ -1,13 +1,9 @@
 # Coreboot for the X210AI
 
-A [coreboot](https://coreboot.org) port for the X210AI: a Meteor Lake
+A coreboot port for the X210AI: a Meteor Lake
 (Core Ultra 7 165H / 9 185H) mainboard for the ThinkPad X200/X201
 chassis, with DDR5 SODIMM, two M.2 NVMe, a 2.5" SATA bay, and two USB C (one
 Thunderbolt 4).
-
-This is a fork of upstream coreboot with the board added under
-`src/mainboard/51nb/x210ai`. It's also in review upstream:
-https://review.coreboot.org/c/coreboot/+/94886
 
 ## Building
 
