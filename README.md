@@ -25,6 +25,8 @@ descriptor and ME stay on the chip.
 
 ## Flashing
 
+MAKE SURE TO DISABLE INTEL BOOT GUARD FIRST!!!
+
 Internal, from Linux on the running board (easiest):
 
 ```sh
