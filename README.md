@@ -1,196 +1,49 @@
-coreboot README
-===============
+# Coreboot for the X210AI
 
-coreboot is a Free Software project aimed at replacing the proprietary
-firmware (BIOS/UEFI) found in most computers. coreboot performs the
-required hardware initialization to configure the system, then passes
-control to a different executable, referred to in coreboot as the
-payload. Most often, the primary function of the payload is to boot the
-operating system (OS).
+A [coreboot](https://coreboot.org) port for the X210AI: a Meteor Lake
+(Core Ultra 7 165H / 9 185H) mainboard that drops into the ThinkPad X200/X201
+chassis, with DDR5 SODIMMs, two M.2 NVMe, a 2.5" SATA bay, and two USB C (one
+Thunderbolt 4).
 
-With the separation of hardware initialization and later boot logic,
-coreboot is perfect for a wide variety of situations. It can be used
-for specialized applications that run directly in the firmware, running
-operating systems from flash, loading custom bootloaders, or
-implementing firmware standards, like PC BIOS services or UEFI. This
-flexibility allows coreboot systems to include only the features
-necessary in the target application, reducing the amount of code and
-flash space required.
+This is a fork of upstream coreboot with the board added under
+`src/mainboard/51nb/x210ai`. It's also in review upstream:
+https://review.coreboot.org/c/coreboot/+/94886
 
+## Building
 
-Source code
------------
+```sh
+git clone https://github.com/WheeledCord/coreboot-x210ai
+cd coreboot-x210ai
+git submodule update --init --checkout
+make crossgcc-i386 CPUS=$(nproc)   # first time only; builds coreboot's toolchain
+make menuconfig                    # Mainboard -> 51NB -> X210AI
+make
+```
 
-All source code for coreboot is stored in git. It is downloaded with
-the command:
+Output is `build/coreboot.rom`. Only the BIOS region is built — the factory
+descriptor and ME stay on the chip.
 
-`git clone https://review.coreboot.org/coreboot.git`.
+## Flashing
 
-Code reviews are done in [the project's Gerrit
-instance](https://review.coreboot.org/).
+Internal, from Linux on the running board (easiest):
 
-The coreboot project also maintains a
-[mirror](https://github.com/coreboot/coreboot) of the project on github.
-This is read-only, as coreboot does not accept github pull requests,
-but allows browsing and downloading the coreboot source.
+```sh
+flashrom -p internal --ifd -i bios -N -w build/coreboot.rom
+```
 
-Payloads
---------
+Flashing externally with an SPI programmer can also be done. The SPI chip is a WSON-8
+on the mainboard, circled here:
 
-After the basic initialization of the hardware has been performed, any
-desired "payload" can be started by coreboot.
+![SPI chip location](Documentation/mainboard/51nb/x210ai.png)
 
-See <https://doc.coreboot.org/payloads.html> for a list of some of
-coreboot's supported payloads.
+## Status
 
+Boots Linux with NVMe/SATA, WiFi, Bluetooth, Ethernet, ALC1220 audio, internal
+eDP + external HDMI/DP, USB, and S3 resume all working.
 
-Supported Hardware
-------------------
+Untested: TPM (Intel PTT isn't enabled in this ME), Thunderbolt/USB4, WWAN.
 
-The coreboot project supports a wide range of architectures, chipsets,
-devices, and mainboards. While not all of these are documented, you can
-find some information in the [Architecture-specific
-documentation](https://doc.coreboot.org/arch/index.html) or the
-[SOC-specific documentation](https://doc.coreboot.org/soc/index.html).
+## Payload
 
-For details about the specific mainboard devices that coreboot supports,
-please consult the [Mainboard-specific
-documentation](https://doc.coreboot.org/mainboard/index.html) or the
-[Board Status](https://coreboot.org/status/board-status.html) pages.
-
-
-Releases
---------
-
-Releases are currently done by coreboot every quarter. The
-release archives contain the entire coreboot codebase from the time of
-the release, along with any external submodules. The submodules
-containing binaries are separated from the general release archives. All
-of the packages required to build the coreboot toolchains are also kept
-at coreboot.org in case the websites change, or those specific packages
-become unavailable in the future.
-
-All releases are available on the [coreboot
-download](https://coreboot.org/downloads.html) page.
-
-Please note that the coreboot releases are best considered as snapshots
-of the codebase, and do not currently guarantee any sort of extra
-stability.
-
-Build Requirements and building coreboot
-----------------------------------------
-
-The coreboot build, associated utilities and payloads require many
-additional tools and packages to build. The actual coreboot binary is
-typically built using a coreboot-controlled toolchain to provide
-reproducibility across various platforms. It is also possible, though
-not recommended, to make it directly with your system toolchain.
-Operating systems and distributions come with an unknown variety of
-system tools and utilities installed. Because of this, it isn't
-reasonable to list all the required packages to do a build, but the
-documentation lists the requirements for a few different Linux
-distributions.
-
-To see the list of tools and libraries, along with a list of
-instructions to get started building coreboot, go to the [Starting from
-scratch](https://doc.coreboot.org/tutorial/part1.html) tutorial page.
-
-That same page goes through how to use QEMU to boot the build and see
-the output.
-
-
-Website and Mailing List
-------------------------
-
-Further details on the project, as well as links to documentation and
-more can be found on the coreboot website:
-
-  <https://www.coreboot.org>
-
-You can contact us directly on the coreboot mailing list:
-
-  <https://doc.coreboot.org/community/forums.html>
-
-
-
-Copyrights and Licenses
----------------------
-
-
-### Uncopyrightable files
-
-There are many files in the coreboot tree that we feel are not
-copyrightable due to a lack of creative content.
-
-"In order to qualify for copyright protection in the United States, a
-work must satisfy the originality requirement, which has two parts. The
-work must have “at least a modicum” of creativity, and it must be the
-independent creation of its author."
-
-  <https://guides.lib.umich.edu/copyrightbasics/copyrightability>
-
-Similar terms apply to other locations.
-
-These uncopyrightable files include:
-
-- Empty files or files with only a comment explaining their existence.
-  These may be required to exist as part of the build process but are
-  not needed for the particular project.
-- Configuration files either in binary or text form. Examples would be
-  files such as .vbt files describing graphics configuration, .apcb
-  files containing configuration parameters for AMD firmware binaries,
-  and spd files as binary .spd or text \*spd\*.hex representing memory
-  chip configuration.
-- Machine-generated files containing version numbers, dates, hash
-  values or other "non-creative" content.
-
-As non-creative content, these files are in the public domain by
-default.  As such, the coreboot project excludes them from the project's
-general license even though they may be included in a final binary.
-
-If there are questions or concerns about this policy, please get in
-touch with the coreboot project via the mailing list.
-
-
-### Copyrights
-
-The copyright on coreboot is owned by quite a large number of individual
-developers and companies. A list of companies and individuals with known
-copyright claims is present at the top level of the coreboot source tree
-in the 'AUTHORS' file. Please check the git history of each of the
-source files for details.
-
-
-### Licenses
-
-Because of the way coreboot began, using a significant amount of source
-code from the Linux kernel, it's licensed the same way as the Linux
-Kernel, with GNU General Public License (GPL) Version 2. Individual
-files are licensed under various licenses, though all are compatible
-with GPLv2. The resulting coreboot image is licensed under the GPL,
-version 2. All source files should have an SPDX license identifier at
-the top for clarification.
-
-Files under coreboot/Documentation/ are licensed under CC-BY 4.0 terms.
-As an exception, files under Documentation/ with a history older than
-2017-05-24 might be under different licenses.
-
-Files in the coreboot/src/commonlib/bsd directory are all licensed with
-the BSD-3-clause license.  Many are also dual-licensed GPL-2.0-only or
-GPL-2.0-or-later.  These files are intended to be shared with libpayload
-or other BSD licensed projects.
-
-The libpayload project contained in coreboot/payloads/libpayload may be
-licensed as BSD or GPL, depending on the code pulled in during the build
-process. All GPL source code should be excluded unless the Kconfig
-option to include it is set.
-
-
-The Software Freedom Conservancy
---------------------------------
-
-Since 2017, coreboot has been a member of [The Software Freedom
-Conservancy](https://sfconservancy.org/), a nonprofit organization
-devoted to ethical technology and driving initiatives to make technology
-more inclusive. The conservancy acts as coreboot's fiscal sponsor and
-legal advisor.
+Payload is your choice in `make menuconfig`. I run edk2 (UefiPayloadPkg) to boot
+a UEFI OS off NVMe.
