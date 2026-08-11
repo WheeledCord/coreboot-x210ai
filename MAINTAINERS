@@ -118,6 +118,12 @@ Maintainers List (try to look for most precise areas first)
 # Mainboards
 ################################################################################
 
+51NB X210AI MAINBOARD
+M:	Fionn Cassidy <fionn.cassidy@proton.me>
+S:	Maintained
+F:	src/mainboard/51nb/x210ai/
+F:	Documentation/mainboard/51nb/x210ai.md
+
 51NB MAINBOARDS
 S:	Orphan
 F:	src/mainboard/51nb/

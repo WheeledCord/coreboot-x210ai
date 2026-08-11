@@ -8,6 +8,7 @@ This section contains documentation about coreboot on specific mainboards.
 :maxdepth: 1
 
 X210 <51nb/x210.md>
+X210AI <51nb/x210ai.md>
 ```
 
 ## Acer

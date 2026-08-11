@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+chip soc/intel/meteorlake
+
+	register "eist_enable" = "true"
+	register "tcc_offset" = "8"
+
+	# s0ix_enable = false -> real s3, not s0ix (needs INTEL_TME off, see Kconfig)
+	register "s0ix_enable" = "false"
+
+	device domain 0 on
+		# fsp-gop + vbt; internal edp on ddi a, external hdmi/dp on ddi b
+		device ref igpu on
+			register "ddi_port_A_config" = "1"
+			register "ddi_ports_config" = "{
+				[DDI_PORT_A] = DDI_ENABLE_HPD,
+				[DDI_PORT_B] = DDI_ENABLE_HPD | DDI_ENABLE_DDC,
+			}"
+			register "gfx" = "GMA_DEFAULT_PANEL(0)"
+		end
+
+		device ref uart0 on end	# debug console
+
+		# espi ec (ite it5571e); acpi in acpi/ec_device.asl, sci on gpe 0x6E
+		device ref soc_espi on end
+
+		# usb2 map from hardware; HS08 is type-c, the rest type-a or internal
+		device ref xhci on
+			register "usb2_ports" = "{
+				[1] = USB2_PORT_MID(OC_SKIP),		/* HS02 card reader */
+				[2] = USB2_PORT_MID(OC_SKIP),		/* HS03 type-a */
+				[4] = USB2_PORT_MID(OC_SKIP),		/* HS05 fingerprint */
+				[5] = USB2_PORT_MID(OC_SKIP),		/* HS06 type-a */
+				[6] = USB2_PORT_MID(OC_SKIP),		/* HS07 type-a */
+				[7] = USB2_PORT_TYPE_C(OC_SKIP),	/* HS08 type-c */
+				[8] = USB2_PORT_MID(OC_SKIP),		/* HS09 type-a */
+				[9] = USB2_PORT_MID(OC_SKIP),		/* HS10 bluetooth */
+			}"
+			# 2 pch superspeed ports (soc max); type-c superspeed is on tcss below
+			register "usb3_ports" = "{
+				[0] = USB3_PORT_DEFAULT(OC_SKIP),
+				[1] = USB3_PORT_DEFAULT(OC_SKIP),
+			}"
+		end
+
+		# sata os drive; only port 0 is wired
+		device ref sata on
+			register "sata_salp_support" = "false"
+			register "sata_pwr_optimize_disable" = "true"
+			register "sata_ports_enable[0]" = "true"
+		end
+
+		device ref hda on
+			# enable the alc1220 sdi link, else only the hdmi codec appears
+			register "pch_hda_audio_link_hda_enable" = "1"
+			register "pch_hda_sdi_enable[0]" = "1"
+			register "pch_hda_idisp_codec_enable" = "1"
+			register "pch_hda_idisp_link_frequency" = "HDA_LINKFREQ_96MHZ"
+			register "pch_hda_idisp_link_tmode" = "HDA_TMODE_8T"
+		end
+
+		# pcie by physical root port, not the swapped bdf; clocks from ssdt SCLK
+		device ref pcie_rp4 on	# RTL8168 ethernet
+			register "pcie_rp[PCH_RP(4)]" = "{
+				.clk_src = 3,
+				.clk_req = 3,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
+			}"
+		end
+		device ref pcie_rp5 on	# RTL8822BE wifi
+			register "pcie_rp[PCH_RP(5)]" = "{
+				.clk_src = 2,
+				.clk_req = 2,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
+			}"
+		end
+		device ref pcie_rp10 on	# cpu m.2 nvme
+			register "pcie_rp[PCH_RP(10)]" = "{
+				.clk_src = 8,
+				.clk_req = 8,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
+			}"
+		end
+		device ref pcie_rp11 on	# cpu m.2 nvme
+			register "pcie_rp[PCH_RP(11)]" = "{
+				.clk_src = 7,
+				.clk_req = 7,
+				.flags = PCIE_RP_LTR | PCIE_RP_AER,
+			}"
+		end
+
+		# usb4 / thunderbolt
+		device ref tbt_pcie_rp0 on end
+		device ref tcss_xhci on
+			register "tcss_ports[0]" = "TCSS_PORT_DEFAULT(OC_SKIP)"
+			chip drivers/usb/acpi
+				device ref tcss_root_hub on
+					chip drivers/usb/acpi
+						register "desc" = ""USB Type-C""
+						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
+						device ref tcss_usb3_port0 on end
+					end
+				end
+			end
+		end
+		device ref tcss_dma0 on end
+
+		device ref smbus on end
+	end
+end

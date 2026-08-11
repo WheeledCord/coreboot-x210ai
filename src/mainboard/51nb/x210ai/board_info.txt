@@ -1,0 +1,8 @@
+Vendor name: 51NB
+Board name: X210AI
+Category: laptop
+Release year: 2024
+ROM package: WSON-8
+ROM protocol: SPI
+ROM socketed: n
+Flashrom support: y

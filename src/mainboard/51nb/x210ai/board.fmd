@@ -1,0 +1,15 @@
+# flash layout matching the vendor descriptor; only the bios region is built and
+# flashed, the descriptor/me/deviceexp2 stay on-chip (see Documentation).
+FLASH 32M {
+	SI_DESC 16K
+	SI_ME 8260K
+	SI_DEVICEEXT2 10156K
+	SI_BIOS@18M 14M {
+		RW_MRC_CACHE 64K
+		SMMSTORE(PRESERVE) 512K
+		WP_RO {
+			FMAP 4K
+			COREBOOT(CBFS)
+		}
+	}
+}
