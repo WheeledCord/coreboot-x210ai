@@ -87,14 +87,23 @@ static void process_mem_chip_information(struct mem_chip_info *info)
 static void write_mem_chip_information(struct qclib_cb_if_table_entry *te)
 {
 	struct mem_chip_info *info = (void *)te->blob_address;
-	if (te->size > sizeof(struct mem_chip_info) &&
-	    te->size == mem_chip_info_size(info->num_entries)) {
-		process_mem_chip_information(info);
-		dump_mem_chip_info(info);
 
-		/* Save mem_chip_info in global variable ahead of hook running */
-		mem_chip_info = info;
+	if (!info || te->size < sizeof(struct mem_chip_info)) {
+		printk(BIOS_WARNING, "mem_chip_info buffer too small for header (%x)\n", te->size);
+		return;
 	}
+
+	if (te->size < mem_chip_info_size(info->num_entries)) {
+		printk(BIOS_WARNING, "mem_chip_info buffer (%x) too small for %u entries (%zu)\n",
+		       te->size, info->num_entries, mem_chip_info_size(info->num_entries));
+		return;
+	}
+
+	process_mem_chip_information(info);
+	dump_mem_chip_info(info);
+
+	/* Save mem_chip_info in global variable ahead of hook running */
+	mem_chip_info = info;
 }
 
 static void add_mem_chip_info(int unused)
@@ -236,6 +245,8 @@ static void write_qclib_log_to_cbmemc(struct qclib_cb_if_table_entry *te)
 
 static void write_table_entry(struct qclib_cb_if_table_entry *te)
 {
+	printk(BIOS_DEBUG, "%s: table entry: %s\n", __func__, te->name);
+
 	if (!strncmp(QCLIB_TE_DDR_INFORMATION, te->name,
 			sizeof(te->name))) {
 		write_ddr_information(te);
@@ -327,6 +338,7 @@ static void qclib_prepare_and_run(void)
 		qclib_cb_if_table.global_attributes |=
 			QCLIB_GA_ENABLE_UART_LOGGING;
 
+	printk(BIOS_DEBUG, "%s: Dumping table entries (BEFORE QCLib):\n", __func__);
 	dump_te_table();
 
 	printk(BIOS_DEBUG, "Global Attributes[%#x]..Table Entries Count[%d]\n",
@@ -346,6 +358,9 @@ static void qclib_prepare_and_run(void)
 	}
 
 	prog_run(&qclib);
+
+	printk(BIOS_DEBUG, "%s: Dumping table entries (AFTER QCLib):\n", __func__);
+	dump_te_table();
 
 	if (qclib_cb_if_table.num_entries > QCLIB_MAX_NUMBER_OF_ENTRIES) {
 		printk(BIOS_ERR, "QcLib returned invalid num_entries=%u,",
@@ -412,7 +427,8 @@ void qclib_load_and_run(void)
 			_ddr_training, data_size, 0);
 
 	/* Address and size of this entry will be filled in by QcLib. */
-	qclib_add_if_table_entry(QCLIB_TE_MEM_CHIP_INFO, NULL, 0, 0);
+	if (!CONFIG(QC_MEMCHIP_INFO_ON_RERUN))
+		qclib_add_if_table_entry(QCLIB_TE_MEM_CHIP_INFO, NULL, 0, 0);
 
 	if (_pmic) {
 		/* Attempt to load PMICCFG Blob */
@@ -568,6 +584,10 @@ void qclib_rerun(void)
 
 		qclib_add_if_table_entry(QCLIB_TE_RAMDUMP_META_SETTINGS, _apdp_ramdump_meta, data_size, 0);
 	}
+
+	/* Address and size of this entry will be filled in by QcLib. */
+	if (CONFIG(QC_MEMCHIP_INFO_ON_RERUN))
+		qclib_add_if_table_entry(QCLIB_TE_MEM_CHIP_INFO, NULL, 0, 0);
 
 	/* Set up the system and jump into QcLib */
 	printk(BIOS_DEBUG, "\n\n\nRe-enter QCLib to bring up AOP\n");

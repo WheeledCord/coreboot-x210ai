@@ -10,6 +10,7 @@
 #include <ec/google/chromeec/ec.h>
 #include <elog.h>
 #include <reset.h>
+#include <security/vboot/vboot_common.h>
 #include <soc/aop_common.h>
 #include <soc/pcie.h>
 #include <soc/pmic.h>
@@ -44,6 +45,15 @@ static bool is_off_mode(void)
 	return is_pon_on_ac();
 }
 
+static bool ap_running_rw(void)
+{
+	if (!CONFIG(VBOOT))
+		return false;
+
+	/* In coreboot, all non-recovery boot runs from RW */
+	return !vboot_recovery_mode_enabled();
+}
+
 static enum boot_mode_t init_boot_mode(void)
 {
 	if (!CONFIG(EC_GOOGLE_CHROMEEC))
@@ -55,7 +65,7 @@ static enum boot_mode_t init_boot_mode(void)
 		boot_mode_new = LB_BOOT_MODE_NO_BATTERY;
 	} else if (google_chromeec_is_rtc_event()) {
 		boot_mode_new = LB_BOOT_MODE_RTC_WAKE;
-	} else if (is_off_mode()) {
+	} else if (is_off_mode() && ap_running_rw() && !google_ec_running_ro()) {
 		boot_mode_new = LB_BOOT_MODE_OFFMODE_CHARGING;
 	} else if (battery_below_threshold) {
 		if (google_chromeec_is_charger_present())
@@ -69,18 +79,6 @@ static enum boot_mode_t init_boot_mode(void)
 	return boot_mode_new;
 }
 
-static void platform_init_lightbar(void)
-{
-	if (!CONFIG(EC_GOOGLE_CHROMEEC_LED_CONTROL))
-		return;
-
-	/*
-	 * Early initialization of the Chrome EC lightbar.
-	 * Ensures visual continuity if the AP firmware disabled the lightbar
-	 * in a previous boot without a subsequent EC reset.
-	 */
-	google_chromeec_lightbar_on();
-}
 /*
  * Update and cache battery status from the EC.
  * This should be called once, early in the boot process,
@@ -136,8 +134,6 @@ static void update_battery_status(void)
 /* Perform romstage early hardware initialization */
 static void mainboard_setup_peripherals_early(void)
 {
-	platform_init_lightbar();
-
 	update_battery_status();
 
 	/* Watchdog must be checked first to avoid erasing watchdog info later. */
@@ -147,15 +143,17 @@ static void mainboard_setup_peripherals_early(void)
 /* Perform romstage late hardware initialization */
 static void mainboard_setup_peripherals_late(int mode)
 {
+	bool nvme_present = mainboard_nvme_present();
 	/*
 	 * Power on NVMe early so that the DDR init and other operations
 	 * that follow provide an organic >50ms delay before PCIe PERST
 	 * de-assertion in platform_romstage_postram(), satisfying the
 	 * NVMe spec requirement without a static mdelay().
 	 */
-	gcom_pcie_power_on_ep();
+	if (nvme_present)
+		gcom_pcie_power_on_ep();
 
-	if (!chipset_dload_mode_active) {
+	if (!chipset_dload_mode_active && nvme_present) {
 		/* Perform PCIe setup early in async mode if supported to save 100ms */
 		if (mode == LB_BOOT_MODE_NORMAL || mode == LB_BOOT_MODE_NO_BATTERY)
 			qcom_setup_pcie_host(NULL);
@@ -224,6 +222,8 @@ void platform_romstage_main(void)
 	/* Recovery from battery shipping mode */
 	if (battery_needs_recovery || battery_is_cutoff)
 		handle_battery_shipping_recovery(battery_needs_recovery);
+
+	init_sdam_config();
 
 	/* Underlying PMIC registers are accessible only at this point */
 	boot_mode = init_boot_mode();

@@ -1,17 +1,18 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
 #include <acpi/acpi.h>
+#include <assert.h>
 #include <console/console.h>
 #include <device/device.h>
 #include <device/pnp.h>
 #include <ec/acpi/ec.h>
+#include <static.h>
 #include <stdio.h>
 #include <string.h>
 #include <smbios.h>
 #include <option.h>
 #include <pc80/keyboard.h>
 #include <types.h>
-
 #include "h8.h"
 #include "chip.h"
 
@@ -93,7 +94,7 @@ static void h8_f1_to_f12_as_primary(int on)
 	}
 }
 
-static u8 h8_build_id_and_function_spec_version(char *buf, u8 buf_len)
+u8 h8_build_id_and_function_spec_version(char *buf, u8 buf_len)
 {
 	static char str[16 + 1]; /* 16 ASCII chars + \0 */
 	u8 i, c;
@@ -249,6 +250,68 @@ struct device_operations h8_dev_ops = {
 
 void __weak h8_mb_init(void){ /* NOOP */ }
 
+/* Returns true when thinklight is supported */
+bool h8_has_thinklight(void)
+{
+	const struct device *dev = DEV_PTR(lenovo_ec);
+	assert(dev && dev->chip_info);
+	const struct ec_lenovo_h8_config *conf = dev ? dev->chip_info : NULL;
+
+	return conf && conf->has_thinklight;
+}
+
+/* Determine keyboard backlight support from devicetree + EC query */
+bool h8_kb_backlight_supported(void)
+{
+	const struct device *dev = DEV_PTR(lenovo_ec);
+	assert(dev && dev->chip_info);
+	const struct ec_lenovo_h8_config *conf = dev ? dev->chip_info : NULL;
+
+	if (!conf || !conf->has_keyboard_backlight)
+		return false;
+
+	return ec_read(0x34) & 0x40;
+}
+
+u8 h8_illumination_default(void)
+{
+	const bool has_thinklight = h8_has_thinklight();
+	const bool has_kb_backlight = h8_kb_backlight_supported();
+
+	if (has_thinklight && has_kb_backlight)
+		return KIC_BOTH;
+	if (has_thinklight)
+		return KIC_THINKLIGHT;
+	if (has_kb_backlight)
+		return KIC_KEYBOARD;
+
+	return KIC_NONE;
+}
+
+/* User-set illumination option */
+static u8 h8_illumination_option(void)
+{
+	return get_uint_option("backlight", h8_illumination_default()) & 0x3;
+}
+
+bool h8_thinklight_active(void)
+{
+	if (!h8_has_thinklight())
+		return false;
+
+	u8 backlight = h8_illumination_option();
+	return backlight == KIC_BOTH || backlight == KIC_THINKLIGHT;
+}
+
+bool h8_kb_backlight_active(void)
+{
+	if (!h8_kb_backlight_supported())
+		return false;
+
+	u8 backlight = h8_illumination_option();
+	return backlight == KIC_BOTH || backlight == KIC_KEYBOARD;
+}
+
 static void h8_enable(struct device *dev)
 {
 	struct ec_lenovo_h8_config *conf = dev->chip_info;
@@ -267,16 +330,8 @@ static void h8_enable(struct device *dev)
 	reg8 |= H8_CONFIG0_TC_ENABLE;
 	ec_write(H8_CONFIG0, reg8);
 
-	/* Default to both keyboard illumination devices */
-	backlight = get_uint_option("backlight", 0) & 0x3;
-
-	/*
-	 * Disable keyboard backlight if:
-	 *   - Non-backlit hardware is physically installed -or-
-	 *   - "Thinklight only" or "None" is selected as keyboard illumination
-	 */
-	if (conf->has_keyboard_backlight)
-		conf->has_keyboard_backlight = (ec_read(0x34) & 0x40) && !(backlight & 0x2);
+	/* Program illumination mode from user option */
+	backlight = h8_illumination_option();
 
 	reg8 = conf->config1;
 	if (conf->has_thinklight || conf->has_keyboard_backlight)
@@ -347,11 +402,11 @@ static void h8_enable(struct device *dev)
 	if (volume <= 0xff && !acpi_is_wakeup_s3())
 		ec_write(H8_VOLUME_CONTROL, volume);
 
-	val = (CONFIG(H8_SUPPORT_BT_ON_WIFI) || h8_has_bdc(dev)) &&
+	val = (CONFIG(H8_SUPPORT_BT_ON_WIFI) || h8_has_bdc()) &&
 		h8_bluetooth_nv_enable();
 	h8_bluetooth_enable(val);
 
-	val = h8_has_wwan(dev) && h8_wwan_nv_enable();
+	val = h8_has_wwan() && h8_wwan_nv_enable();
 	h8_wwan_enable(val);
 
 	if (conf->has_uwb)

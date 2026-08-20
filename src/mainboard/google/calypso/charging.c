@@ -20,17 +20,36 @@
 #define SMB3_CHGR_MAX_FCC_CFG ((SMB3_SLAVE_ID << 16) | SCHG_CHGR_MAX_FAST_CHARGE_CURRENT_CFG)
 
 #define SCHG_CHGR_CHARGING_ENABLE_CMD 0x2642
+#define SCHG_TYPE_C_TYPE_C_DEBUG_ACCESS_SNK_CFG 0x2B4A
 #define SMB1_CHGR_CHRG_EN_CMD ((SMB1_SLAVE_ID << 16) | SCHG_CHGR_CHARGING_ENABLE_CMD)
 #define SMB2_CHGR_CHRG_EN_CMD ((SMB2_SLAVE_ID << 16) | SCHG_CHGR_CHARGING_ENABLE_CMD)
 #define SMB3_CHGR_CHRG_EN_CMD ((SMB3_SLAVE_ID << 16) | SCHG_CHGR_CHARGING_ENABLE_CMD)
+#define SMBx_SCHG_TYPE_C_TYPE_C_DEBUG_ACCESS_SNK_CFG(x) \
+(((x) << 16) | SCHG_TYPE_C_TYPE_C_DEBUG_ACCESS_SNK_CFG)
+#define SCHG_TYPE_C_TYPE_C_DEBUG_ACCESS_SRC_CFG 0x2B4C
+#define SMBx_SCHG_TYPE_C_TYPE_C_DEBUG_ACCESS_SRC_CFG(x) \
+(((x) << 16) | SCHG_TYPE_C_TYPE_C_DEBUG_ACCESS_SRC_CFG)
+#define SCHG_TYPE_C_SUSPEND_LEGACY_CHARGERS 0x2B90
+#define SMBx_SCHG_TYPE_C_SUSPEND_LEGACY_CHARGERS(x) \
+(((x) << 16) | SCHG_TYPE_C_SUSPEND_LEGACY_CHARGERS)
 
 #define SCHG_CHGR_CHARGING_FCC 0x260A
 #define SMB1_CHGR_CHARGING_FCC ((SMB1_SLAVE_ID << 16) | SCHG_CHGR_CHARGING_FCC)
 #define SMB2_CHGR_CHARGING_FCC ((SMB2_SLAVE_ID << 16) | SCHG_CHGR_CHARGING_FCC)
 #define SMB3_CHGR_CHARGING_FCC ((SMB3_SLAVE_ID << 16) | SCHG_CHGR_CHARGING_FCC)
 
+#define SCHG_CHGR_PSM_CFG 0x27C0
+#define SCHG_CHGR_NORMAL_PSM_MODE 0x0
+#define SCHG_CHGR_LOW_PSM_MODE 0x3
+/* Mask for bits [5:4] -> 0b00110000 = 0x30 */
+#define SCHG_CHGR_PSM_MODE_MASK 0x30
+#define SCHG_CHGR_PSM_MODE_SHIFT 4
+
 #define FCC_3A_STEP_50MA 0x3C
 #define FCC_DISABLE 0x8c
+#define EN_DEBUG_ACCESS_SNK 0x1B
+#define EN_DEBUG_ACCESS_SRC 0x01
+#define EN_SWITCHER_DAM_500 0x05
 
 /*
  * SDAM15_MEM_061 (SPMI address 0x7E7D) - SetMaxPwrReq_BattSts register
@@ -40,7 +59,7 @@
 #define DEAD_BATT_STS	BIT(6)
 
 #define DELAY_CHARGING_APPLET_MS 2000 /* 2sec */
-#define CHARGING_RAIL_STABILIZATION_DELAY_MS 5000 /* 5sec */
+#define CHARGING_RAIL_STABILIZATION_DELAY_MS 15000 /* 15sec */
 #define DEAD_BATTERY_CHARGING_LOOP_EXIT_MS (10 * 60 * 1000) /* 10min */
 #define DELAY_CHARGING_ACTIVE_LB_MS 4000 /* 4sec */
 #define SMB_FCC_MULTIPLIER_MA 50
@@ -50,6 +69,68 @@ enum charging_status {
 	CHRG_DISABLE,
 	CHRG_ENABLE,
 };
+
+static struct sdam_config {
+uint32_t addr;
+uint8_t mask;
+uint8_t value;
+} default_sdam_config[] = {
+	{SDAM15_MEM_061_ADDR, DEAD_BATT_STS, 0},
+};
+
+/*
+ * Initialize SDAM to default values at boot
+ */
+void init_sdam_config(void)
+{
+	printk(BIOS_INFO, "Initializing SDAM config at boot\n");
+	size_t count = ARRAY_SIZE(default_sdam_config);
+	for (size_t i = 0; i < count; i++)
+		spmi_rmw8(default_sdam_config[i].addr, default_sdam_config[i].mask,
+				default_sdam_config[i].value);
+}
+
+/*
+ * Configures target charger to Normal PSM mode.
+ *
+ * slave_id: Raw slave ID of the target SMB (e.g., SMB1_SLAVE_ID or SMB2_SLAVE_ID)
+ */
+static void smb_config_normal_psm(uint8_t slave_id)
+{
+	uint32_t reg_addr = ((uint32_t)slave_id << 16) | SCHG_CHGR_PSM_CFG;
+	uint8_t reg_val = (SCHG_CHGR_NORMAL_PSM_MODE << SCHG_CHGR_PSM_MODE_SHIFT);
+
+	spmi_rmw8(reg_addr, SCHG_CHGR_PSM_MODE_MASK, reg_val);
+}
+
+/*
+ * Configures target charger to Low-Power PSM mode.
+ *
+ * slave_id: Raw slave ID of the target SMB (e.g., SMB1_SLAVE_ID or SMB2_SLAVE_ID)
+ */
+static void smb_config_low_power_psm(uint8_t slave_id)
+{
+	uint32_t reg_addr = ((uint32_t)slave_id << 16) | SCHG_CHGR_PSM_CFG;
+	uint8_t reg_val = (SCHG_CHGR_LOW_PSM_MODE << SCHG_CHGR_PSM_MODE_SHIFT);
+
+	spmi_rmw8(reg_addr, SCHG_CHGR_PSM_MODE_MASK, reg_val);
+}
+
+static void smb_enter_low_power_psm_at_poweroff(void)
+{
+	/* Shutdown: low power sequence */
+	smb_config_low_power_psm(SMB1_SLAVE_ID);
+	smb_config_low_power_psm(SMB2_SLAVE_ID);
+	smb_config_low_power_psm(SMB3_SLAVE_ID);
+}
+
+static void smb_enter_normal_power_psm_at_offmode(void)
+{
+	/* Off-mode: charging sequence */
+	smb_config_normal_psm(SMB1_SLAVE_ID);
+	smb_config_normal_psm(SMB2_SLAVE_ID);
+	smb_config_normal_psm(SMB3_SLAVE_ID);
+}
 
 static int get_battery_icurr_ma(void)
 {
@@ -100,7 +181,7 @@ static void clear_ac_unplug_event(void)
 	google_chromeec_clear_events_b(ac_unplug_event);
 }
 
-static int detect_ac_unplug_event(void)
+int detect_ac_unplug_event(void)
 {
 	const uint64_t ac_unplug_event_mask =
 		EC_HOST_EVENT_MASK(EC_HOST_EVENT_AC_DISCONNECTED);
@@ -112,20 +193,32 @@ static int detect_ac_unplug_event(void)
 	return 0;
 }
 
-/*
- * Provides visual feedback via the LEDs and clears the AC unplug
- * event to acknowledge the transition into a charging state.
- */
-static void indicate_charging_status(void)
+void clear_pending_ec_events(void)
 {
-	/* Turn on LEDs to alert user of power state change */
-	if (CONFIG(EC_GOOGLE_CHROMEEC_LED_CONTROL)) {
-		google_chromeec_lightbar_on();
-		mdelay(DELAY_CHARGING_ACTIVE_LB_MS);
-	}
+	if (!CONFIG(EC_GOOGLE_CHROMEEC))
+		return;
 
-	/* Clear the event to prevent re-triggering in the next iteration */
+	/* Reset AC-unplug detection state and lightbar status before entering loop */
 	clear_ac_unplug_event();
+	/* clear any pending power button press and lid open event */
+	clear_ec_manual_poweron_event();
+}
+
+/*
+ * Signals the Chrome EC to register the final off-mode heartbeat
+ * and initiates the AP power-off sequence.
+ *
+ * Input: bool skip_heartbeat - if true then wake immediately after shutdown
+ *                              depending upon charger attached state.
+ */
+void chromeec_finalize_and_poweroff(bool skip_heartbeat)
+{
+	smb_enter_low_power_psm_at_poweroff();
+
+	if (!skip_heartbeat)
+		google_chromeec_offmode_heartbeat();
+
+	google_chromeec_ap_poweroff();
 }
 
 void launch_charger_applet(void)
@@ -139,13 +232,23 @@ void launch_charger_applet(void)
 
 	printk(BIOS_INFO, "Inside %s. Initiating charging\n", __func__);
 
-	/* Reset AC-unplug detection state and lightbar status before entering loop */
-	clear_ac_unplug_event();
-	/* clear any pending power button press and lid open event */
-	clear_ec_manual_poweron_event();
+	smb_enter_normal_power_psm_at_offmode();
 
 	stopwatch_init_msecs_expire(&sw, charging_enable_timeout_ms);
+
 	while (!get_battery_icurr_ma()) {
+		if (detect_ec_manual_poweron_event()) {
+			printk(BIOS_INFO, "Exiting charging applet to boot to OS\n");
+			do_board_reset();
+		}
+
+		/* Relying on debounce logic before bailing out */
+		if (detect_ac_unplug_event()) {
+			printk(BIOS_INFO, "Issuing power-off due to changer disconnection.\n");
+			clear_ac_unplug_event();
+			chromeec_finalize_and_poweroff(false);
+		}
+
 		if (stopwatch_expired(&sw)) {
 			printk(BIOS_WARNING, "Charging not enabled %ld ms. Abort.\n",
 					charging_enable_timeout_ms);
@@ -156,9 +259,8 @@ void launch_charger_applet(void)
 			 */
 			printk(BIOS_INFO, "Issuing power-off.\n");
 			if (detect_ac_unplug_event())
-				indicate_charging_status();
-			google_chromeec_offmode_heartbeat();
-			google_chromeec_ap_poweroff();
+				clear_ac_unplug_event();
+			chromeec_finalize_and_poweroff(false);
 		}
 		mdelay(200);
 	}
@@ -199,9 +301,8 @@ void launch_charger_applet(void)
 		if (!get_battery_icurr_ma()) {
 			printk(BIOS_INFO, "Issuing power-off due to change in charging state.\n");
 			if (detect_ac_unplug_event())
-				indicate_charging_status();
-			google_chromeec_offmode_heartbeat();
-			google_chromeec_ap_poweroff();
+				clear_ac_unplug_event();
+			chromeec_finalize_and_poweroff(true);
 		}
 
 		/*
@@ -218,6 +319,23 @@ void launch_charger_applet(void)
 			do_board_reset();
 		}
 	} while (true);
+}
+
+/*
+ * Configure debug access port to support source and sink modes.
+ */
+void configure_debug_access_port(void)
+{
+	if (!CONFIG(HAVE_DEBUG_ACCESS_PORT_SOURCE_SINK))
+		return;
+
+	printk(BIOS_INFO, "Enable support of source and sink modes for debug access port\n");
+	spmi_write8(SMBx_SCHG_TYPE_C_TYPE_C_DEBUG_ACCESS_SRC_CFG(CONFIG_DAP_SMB_SLAVE_ID),
+			 EN_DEBUG_ACCESS_SRC);
+	spmi_write8(SMBx_SCHG_TYPE_C_TYPE_C_DEBUG_ACCESS_SNK_CFG(CONFIG_DAP_SMB_SLAVE_ID),
+			 EN_DEBUG_ACCESS_SNK);
+	spmi_write8(SMBx_SCHG_TYPE_C_SUSPEND_LEGACY_CHARGERS(CONFIG_DAP_SMB_SLAVE_ID),
+			 EN_SWITCHER_DAM_500);
 }
 
 /*

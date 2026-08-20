@@ -15,9 +15,25 @@ static const struct sm_object touchpad_type = SM_DECLARE_ENUM({
 		{ "Elan",		1	},
 		{ "Cypress",		2	},
 		SM_ENUM_VALUE_END		},
-#if !CONFIG(BOARD_GOOGLE_PEPPY)
-	.flags		= CFR_OPTFLAG_SUPPRESS,
-#endif
+	.flags		= !CONFIG(BOARD_GOOGLE_PEPPY) ? CFR_OPTFLAG_SUPPRESS : 0,
+});
+
+static const struct sm_object lte_ngff = SM_DECLARE_BOOL({
+	.opt_name	= "lte_ngff",
+	.ui_name	= "LTE / NGFF slot",
+	.ui_helptext	= "Enable PCIe RP2 and ACPI for the LTE/NGFF slot.\n"
+			  "Only for boards with the NGFF connector (or equivalent) fitted.",
+	.default_value	= false,
+	.flags		= !CONFIG(BOARD_GOOGLE_PEPPY) ? CFR_OPTFLAG_SUPPRESS : 0,
+});
+
+static const struct sm_object ambient_light = SM_DECLARE_BOOL({
+	.opt_name	= "ambient_light",
+	.ui_name	= "Ambient light sensor",
+	.ui_helptext	= "Enable ACPI/SMBIOS for the ISL29018 on I2C1.\n"
+			  "Only for boards that have the sensor fitted.",
+	.default_value	= false,
+	.flags		= !CONFIG(BOARD_GOOGLE_PEPPY) ? CFR_OPTFLAG_SUPPRESS : 0,
 });
 
 static struct sm_obj_form system = {
@@ -41,6 +57,8 @@ static struct sm_obj_form devices = {
 	.ui_name = "Devices",
 	.obj_list = (const struct sm_object *[]) {
 		&touchpad_type,
+		&lte_ngff,
+		&ambient_light,
 		NULL
 	},
 };

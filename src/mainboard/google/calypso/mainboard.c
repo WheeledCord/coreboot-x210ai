@@ -9,21 +9,24 @@
 #include <commonlib/coreboot_tables.h>
 #include <delay.h>
 #include <device/device.h>
+#include "display.h"
 #include <ec/google/chromeec/ec.h>
 #include <fw_config.h>
 #include <halt.h>
 #include <soc/cdt.h>
+#include <soc/clock.h>
 #include <soc/pcie.h>
 #include <soc/platform_info.h>
 #include <soc/qupv3_config_common.h>
 #include <soc/qupv3_i2c_common.h>
 #include <soc/qup_se_handlers_common.h>
+#include <soc/rpmh_config.h>
 #include <soc/usb/usb.h>
 #include <soc/variant.h>
 
 bool mainboard_needs_pcie_init(void)
 {
-	return true;
+	return mainboard_nvme_present();
 }
 
 static void trigger_critical_battery_shutdown(void)
@@ -100,18 +103,13 @@ static void handle_low_power_charging_boot(void)
 	if (board_support_dead_battery_charging())
 		configure_dead_battery_boot();
 
+	/* Placeholder for display stop before launching charging applet */
+
+	if (CONFIG(EC_GOOGLE_CHROMEEC) && detect_ac_unplug_event())
+		chromeec_finalize_and_poweroff(false);
+
 	/* FIXME: Add fast charging support */
 	enable_slow_battery_charging();
-
-	/*
-	 * Disable the lightbar for Low-Battery or Off-Mode charging sequences.
-	 * This maintains visual consistency between the built-in display
-	 * indicators and the external lightbar.
-	 */
-	if (CONFIG(EC_GOOGLE_CHROMEEC_LED_CONTROL))
-		google_chromeec_lightbar_off();
-
-	/* Placeholder for display stop before launching charging applet */
 
 	/* Boot to charging applet; if this fails, the applet should trigger a reset */
 	launch_charger_applet();
@@ -119,25 +117,30 @@ static void handle_low_power_charging_boot(void)
 
 static void mainboard_init(void *chip_info)
 {
+	configure_debug_access_port();
+
 	enum boot_mode_t boot_mode = get_boot_mode();
 
 	/* Do early display init for low/off-mode charging */
 	if ((boot_mode == LB_BOOT_MODE_LOW_BATTERY) ||
 			 (boot_mode == LB_BOOT_MODE_LOW_BATTERY_CHARGING) ||
 			 (boot_mode == LB_BOOT_MODE_OFFMODE_CHARGING)) {
+		/* Clear pending events before entering low-power boot */
+		clear_pending_ec_events();
+
 		/*
 		 * Manual delay for panel readiness; required because standard SOC IP
 		 * initialization is bypassed to prioritize fast-charging boot speeds.
 		 */
 		mdelay(250);
-		/* Placeholder for display init */
+		display_startup();
 	}
 
 	/*
 	 * Low-battery boot indicator is done. Therefore, power off if battery
 	 * is critical and not charging
 	 */
-	if (get_boot_mode() == LB_BOOT_MODE_LOW_BATTERY)
+	if (boot_mode == LB_BOOT_MODE_LOW_BATTERY)
 		trigger_critical_battery_shutdown();
 
 	load_qc_se_firmware_early();
@@ -187,7 +190,10 @@ void mainboard_soc_init(void)
 	/* Setup USB related initial config */
 	setup_usb();
 
-	/* Placeholder for display init in LB_BOOT_MODE_NORMAL */
+	enum boot_mode_t boot_mode = get_boot_mode();
+
+	if (boot_mode == LB_BOOT_MODE_NORMAL || boot_mode == LB_BOOT_MODE_NO_BATTERY)
+		display_startup();
 
 	/* Setup audio related initial config */
 	setup_audio();

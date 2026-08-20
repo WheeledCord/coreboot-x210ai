@@ -1,6 +1,6 @@
 ## SPDX-License-Identifier: GPL-2.0-only
 
-all-y += boardid.c
+all-y += board_misc.c
 all-y += chromeos.c
 ifneq ($(CONFIG_MISSING_BOARD_RESET),y)
 all-y += reset.c
@@ -15,3 +15,5 @@ romstage-y += charging.c
 ramstage-y += charging.c
 
 ramstage-y += mainboard.c
+
+ramstage-y += display.c

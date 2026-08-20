@@ -10,7 +10,8 @@ fw_config
 	end
 	field TOUCHSCREEN 17 18
 		option TOUCHSCREEN_UNKNOWN	0
-		option TOUCHSCREEN_PJTQ	1
+		option TOUCHSCREEN_ILI2901A	1
+		option TOUCHSCREEN_None	2
 	end
 	field SENSOR_HUB 23 23
 		option ISH_ABSENT	0
@@ -390,14 +391,14 @@ chip soc/intel/pantherlake
 		device ref thc1 on
 			register "thc_wake_on_touch[1]" = "false"
 			register "thc_mode[1]" = "THC_HID_I2C_MODE"
-			probe TOUCHSCREEN TOUCHSCREEN_PJTQ
+			probe TOUCHSCREEN TOUCHSCREEN_ILI2901A
 			chip drivers/intel/touch
 				register "name" = "INTEL_THC1_NAME"
 				register "mode" = "THC_HID_I2C_MODE"
-				register "dev_hidi2c.hid" = ""RAYD0001""
+				register "dev_hidi2c.hid" = ""ILIT2901""
 				register "dev_hidi2c.cid" = ""PNP0C50""
-				register "dev_hidi2c.intf.hidi2c.addr" = "0x39"
-				register "dev_hidi2c.intf.hidi2c.descriptor_address" = "0"
+				register "dev_hidi2c.intf.hidi2c.addr" = "0x41"
+				register "dev_hidi2c.intf.hidi2c.descriptor_address" = "0x0001"
 				register "dev_hidi2c.intf.hidi2c.interrupt_delay_value" = "100"
 				register "dev_hidi2c.intf.hidi2c.max_frame_size_value" = "128"
 				register "enable_gpio" = "ACPI_GPIO_OUTPUT_ACTIVE_HIGH(GPP_F08)"
@@ -412,7 +413,29 @@ chip soc/intel/pantherlake
 			end
 		end #Touchscreen
 
-		device ref smbus on end
+		device ref hda on
+			chip drivers/intel/soundwire
+				device generic 0 on
+					chip drivers/soundwire/alc711
+						register "desc" = ""Headset Codec""
+						register "alc711_address.version" = "SOUNDWIRE_VERSION_1_2"
+						register "alc711_address.class" = "MIPI_CLASS_SDCA"
+						register "alc711_address.part_id" = "MIPI_DEV_ID_REALTEK_ALC721"
+						register "disable_clkstop_sm_support" = "true"
+						# SoundWire Link 3 ID 0
+						device generic 3.0 on
+						end
+					end
+					chip drivers/soundwire/alc1320
+						register "desc" = ""Speaker Amp""
+						register "alc1320_address.version" = "SOUNDWIRE_VERSION_1_2"
+						register "alc1320_address.class" = "MIPI_CLASS_SDCA"
+						register "alc1320_address.part_id" = "MIPI_DEV_ID_REALTEK_ALC1321"
+						device generic 3.1 on end # SoundWire Link 3 ID 1
+					end
+				end
+			end
+		end
 
 		# NOTE: i2c0 is function 0; hence it needs to be enabled when any of i2c1-5 is enabled.
 		# TPM device is under i2c1. Therefore, i2c0 needs to be enabled anyways.

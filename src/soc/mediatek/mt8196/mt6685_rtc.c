@@ -125,7 +125,7 @@ u16 rtc_measure_frequency_meter(u16 measure_src, u16 window_size)
 			 RG_FQMTR_DCXO26M_MASK, RG_FQMTR_DCXO26M_SHIFT);
 
 	config_interface(RG_FQMTR_TCKSEL, 0,
-			 RG_FQMTR_DCXO26M_MASK, RG_FQMTR_DCXO26M_SHIFT);
+			 RG_FQMTR_TCKSEL_MASK, RG_FQMTR_TCKSEL_SHIFT);
 	udelay(100);
 
 	/* Disable FQMTR */
@@ -208,9 +208,8 @@ static bool rtc_hw_init(void)
 
 	stopwatch_init_usecs_expire(&sw, BBPU_RELOAD_TIMEOUT_US);
 
-	rtc_clrset_trigger(RTC_BBPU, 0,
-			   RTC_BBPU_KEY | RTC_BBPU_RESET_ALARM |
-			   (RTC_BBPU_RESET_SPAR & (~RTC_BBPU_SPAR_SW)));
+	rtc_clrset_trigger(RTC_BBPU, RTC_BBPU_SPAR_SW,
+			   RTC_BBPU_KEY | RTC_BBPU_RESET_ALARM | RTC_BBPU_RESET_SPAR);
 
 	do {
 		rtc_clrset_trigger(RTC_BBPU, 0, RTC_BBPU_KEY | RTC_BBPU_RELOAD);
@@ -245,7 +244,7 @@ static bool rtc_lpd_init(void)
 	if (!rtc_clrset_trigger(RTC_CON, RTC_CON_LPRST, 0))
 		return false;
 
-	if (!rtc_clrset_trigger(RTC_CON, RTC_CON_LPRST, RTC_XOSC32_LPEN))
+	if (!rtc_clrset_trigger(RTC_CON, RTC_CON_LPRST, RTC_EOSC32_LPEN))
 		return false;
 
 	if (!rtc_clrset_trigger(RTC_CON, 0, RTC_CON_LPRST))
@@ -364,7 +363,6 @@ static void rtc_recovery_flow(void)
 
 static bool rtc_first_boot_init(void)
 {
-	u16 rdata;
 	printk(BIOS_INFO, "%s: Enter\n", __func__);
 
 	/* Set SCK_TOP_XTAL_SEL = 1, select internal EOSC */
@@ -375,27 +373,32 @@ static bool rtc_first_boot_init(void)
 	if (!rtc_eosc_cali_and_write())
 		return false;
 
-	if (!rtc_clrset_trigger(RTC_BBPU, 0, RTC_BBPU_KEY | RTC_BBPU_RESET_SPAR))
+	/* write powerkeys */
+	if (!rtc_powerkey_init()) {
+		printk(BIOS_ERR, "%s: rtc_powerkey_init failed\n", __func__);
 		return false;
+	}
 
 	if (!mt6685_writeif_unlock()) {
-		printk(BIOS_ERR,
-		       "%s: mt6685_writeif_unlock failed after BBPU written\n", __func__);
+		printk(BIOS_ERR, "%s: mt6685_writeif_unlock failed\n", __func__);
 		return false;
 	}
 
 	if (!rtc_gpio_init())
 		return false;
 
-	/* write powerkeys */
-	rtc_read(RTC_AL_SEC, &rdata);
-	rtc_write(RTC_AL_SEC, rdata & (~RTC_K_EOSC32_VTCXO_ON_SEL));
-	rtc_read(RTC_AL_YEA, &rdata);
-	rtc_write(RTC_AL_YEA, (rdata & RTC_AL_YEA_MASK) | RTC_K_EOSC_RSV_7 | RTC_K_EOSC_RSV_6);
+	if (!rtc_hw_init())
+		return false;
 
+	if (!rtc_reg_init())
+		return false;
+
+	if (!rtc_lpd_init())
+		return false;
+
+	/* MT6685 needs to write POWERKEY again to unlock RTC after LPD init */
 	if (!rtc_powerkey_init()) {
-		printk(BIOS_ERR,
-		       "%s: rtc_powerkey_init failed\n", __func__);
+		printk(BIOS_ERR, "%s: rtc_powerkey_init failed after lpd init\n", __func__);
 		return false;
 	}
 
@@ -404,40 +407,6 @@ static bool rtc_first_boot_init(void)
 		       "%s: mt6685_writeif_unlock failed after POWERKEY written\n", __func__);
 		return false;
 	}
-
-	if (!rtc_clrset_trigger(RTC_BBPU, 0, RTC_BBPU_KEY | RTC_BBPU_RESET_SPAR)) {
-		printk(BIOS_ERR,
-		       "%s rtc_write_trigger failed after BBPU written\n", __func__);
-		return false;
-	}
-
-	if (!mt6685_writeif_unlock()) {
-		printk(BIOS_ERR,
-		       "%s mt6685_writeif_unlock failed after BBPU written\n", __func__);
-		return false;
-	}
-
-	if (!rtc_lpd_init())
-		return false;
-
-	/* MT6685 needs to write POWERKEY again to unlock RTC */
-	if (!rtc_powerkey_init()) {
-		printk(BIOS_ERR,
-		       "%s: rtc_powerkey_init failed after lpd init\n", __func__);
-		return false;
-	}
-
-	if (!mt6685_writeif_unlock()) {
-		printk(BIOS_ERR,
-		       "%s mt6685_writeif_unlock failed after POWERKEY written\n", __func__);
-		return false;
-	}
-
-	if (!rtc_hw_init())
-		return false;
-
-	if (!rtc_reg_init())
-		return false;
 
 	secure_rtc_init();
 
@@ -555,10 +524,8 @@ void rtc_boot(void)
 	rtc_clrset_trigger(RTC_BBPU, 0, RTC_BBPU_KEY | RTC_BBPU_RELOAD);
 
 	/* HW K EOSC mode whatever power off (including plug out battery) */
-	rtc_read(RTC_AL_YEA, &rtc_al_yea);
-	/* HW K EOSC mode whatever power off (including plug out battery) */
-	rtc_write(RTC_AL_YEA, ((rtc_al_yea | RTC_K_EOSC_RSV_0) &
-		  (~RTC_K_EOSC_RSV_1)) & (~RTC_K_EOSC_RSV_2));
+	rtc_clrset_trigger(RTC_AL_YEA, RTC_K_EOSC_RSV_1 | RTC_K_EOSC_RSV_2,
+			   RTC_K_EOSC_RSV_0);
 
 	/* Defensive patch: Check and enable EOSC HW calibration if disabled */
 	rtc_read(RTC_OSC32CON, &rdata);
@@ -626,6 +593,9 @@ static void rtc_get_tick(struct rtc_time *tm)
 
 	rtc_read(RTC_TC_DOM, &rdata);
 	tm->mday = rdata;
+
+	rtc_read(RTC_TC_DOW, &rdata);
+	tm->wday = rdata;
 
 	rtc_read(RTC_TC_MTH, &rdata);
 	tm->mon = rdata & RTC_TC_MTH_MASK;

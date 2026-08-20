@@ -12,6 +12,13 @@ enum usb_always_on {
 	UAO_AC_ONLY = 2
 };
 
+enum keyboard_illumination_control {
+	KIC_BOTH	= 0,
+	KIC_KEYBOARD	= 1,
+	KIC_THINKLIGHT	= 2,
+	KIC_NONE	= 3
+};
+
 void h8_trackpoint_enable(int on);
 void h8_wlan_enable(int on);
 void h8_set_audio_mute(int on);
@@ -27,13 +34,19 @@ int h8_get_sense_ready(void);
 
 void h8_bluetooth_enable(int on);
 bool h8_bluetooth_nv_enable(void);
-bool h8_has_bdc(const struct device *dev);
+bool h8_has_bdc(void);
 
 void h8_wwan_enable(int on);
 bool h8_wwan_nv_enable(void);
-bool h8_has_wwan(const struct device *dev);
+bool h8_has_wwan(void);
 
+u8 h8_build_id_and_function_spec_version(char *buf, u8 buf_len);
 void h8_ssdt_generator(const struct device *dev);
+bool h8_kb_backlight_supported(void);
+bool h8_has_thinklight(void);
+u8 h8_illumination_default(void);
+bool h8_thinklight_active(void);
+bool h8_kb_backlight_active(void);
 /*
  * boards needing specific h8-related inits could override it
  */
