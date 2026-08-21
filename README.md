@@ -19,7 +19,7 @@ Output is `build/coreboot.rom`. Only the BIOS region is built — the factory de
 
 The X210AI ships with Intel Boot Guard enabled, so the CPU won't run coreboot until it's disabled.
 
-Because the board is in manufacturing mode, Boot Guard's config isn't fused and lives in editable SPI flash. You can disable it via MFIT, but this isn't accessible to most people, so I provide an image [here](https://github.com/WheeledCord/coreboot-x210ai/releases). Back up your chip, then flash it internally:
+Because the board is in manufacturing mode, Boot Guard's config isn't fused and lives in editable SPI flash. You can disable it via Intel's MFIT, but this isn't accessible to most people (If you can find it, use it instead), so I provide an image [here](https://github.com/WheeledCord/coreboot-x210ai/releases). Back up your chip, then flash it internally:
 
 ```sh
 flashrom -p internal -r factory_backup.bin
