@@ -42,6 +42,6 @@ Flashing externally with an SPI programmer can also be done. The SPI chip is a W
 
 ## Status
 
-Boots Linux with NVMe/SATA, WiFi, Bluetooth, Ethernet, ALC1220 audio, internal eDP + external HDMI/DP, USB, and S3 resume all working.
+Boots Linux with NVMe/SATA, WiFi, Bluetooth, Ethernet, ALC1220 audio, internal eDP + external HDMI/DP, USB, and S3 resume all working. Only has been tested on my 165H version, with the 3000x2000 eDP display.
 
 Untested: TPM (Intel PTT isn't enabled in this ME), Thunderbolt/USB4, WWAN.
