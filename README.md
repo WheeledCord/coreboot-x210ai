@@ -23,7 +23,7 @@ First verify Boot Guard can be disabled:
 sudo setpci -s 00:16.0 0x40.l
 ```
 
-If the output is `90000255`, it means the board is in manufacturing mode, and coreboot is possible. If you get something else, manufacturing mode mode is likely disabled and coreboot is not possible for your board (though I am yet to see a board where manufacturing mode is disabled)
+If the output is `90000255`, it means the board is in manufacturing mode, and coreboot is possible. If you get something else, manufacturing mode is likely disabled and coreboot is not possible for your board (though I am yet to see a board where manufacturing mode is disabled)
 
 The X210AI ships with Intel Boot Guard enabled, so the CPU won't run coreboot until it's disabled.
 
