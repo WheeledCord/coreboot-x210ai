@@ -17,6 +17,14 @@ Output is `build/coreboot.rom`. Only the BIOS region is built — the factory de
 
 ## Disabling Boot Guard (do this first)
 
+First verify Boot Guard is disabled:
+
+```sh
+sudo setpci -s 00:16.0 0x40.l
+```
+
+If the output is `90000255`, it means the board is in manufacturing mode, and coreboot is possible. If you get something else, manufacturing mode mode is likely disabled and coreboot is not possible for your board.
+
 The X210AI ships with Intel Boot Guard enabled, so the CPU won't run coreboot until it's disabled.
 
 Because the board is in manufacturing mode, Boot Guard's config isn't fused and lives in editable SPI flash. You can disable it via Intel's MFIT, but this isn't accessible to most people (If you can find it, use it instead), so I provide an image [here](https://github.com/WheeledCord/coreboot-x210ai/releases). Back up your chip, then flash it internally:
