@@ -34,6 +34,24 @@ flashrom -p internal -r factory_backup.bin
 flashrom -p internal -w x210ai-bootguard-disabled.bin
 ```
 
+## Making an image with MFIT
+
+For obvious reasons, you may not want to flash a random binary. If you have a version of MFIT that supports the MTL-P layout (I use version 18.0.10.2285), you can modify your own image to disable Boot Guard yourself.
+
+Decompose your factory dump to get its config as editable XML:
+
+```sh
+wine mfit.exe --decompose dump.bin --saveconfig config.xml
+```
+
+In `config.xml`, find `BtGuardProfileConfig` and change its value from `Debug Profile` to `Boot Guard Disabled`, then rebuild:
+
+```sh
+wine mfit.exe --decompose dump.bin --loadconfig config.xml --build dump_bgdisabled.bin
+```
+
+Only the ME region changes; the descriptor and BIOS are untouched. Flash the result internally as above.
+
 ## Flashing
 
 MAKE SURE TO DISABLE INTEL BOOT GUARD FIRST!!!
