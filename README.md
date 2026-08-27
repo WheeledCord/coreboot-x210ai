@@ -36,7 +36,7 @@ flashrom -p internal -w x210ai-bootguard-disabled.bin
 
 ## Making an image with MFIT
 
-For obvious reasons, you may not want to flash a random binary. If you have a version of MFIT that supports the MTL-P layout (I use version 18.0.10.2285), you can modify your own image to disable Boot Guard yourself.
+For many reasons, you may not want to flash the random binary I provided. If you have a version of MFIT that supports the MTL-P layout (I use version 18.0.10.2285), you can modify your own image to disable Boot Guard yourself.
 
 Decompose your factory dump to get its config as editable XML:
 
