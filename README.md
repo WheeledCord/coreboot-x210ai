@@ -50,8 +50,6 @@ In `config.xml`, find `BtGuardProfileConfig` and change its value from `Debug Pr
 wine mfit.exe --decompose dump.bin --loadconfig config.xml --build dump_bgdisabled.bin
 ```
 
-Only the ME region changes; the descriptor and BIOS are untouched. Flash the result internally as above.
-
 ## Flashing
 
 MAKE SURE TO DISABLE INTEL BOOT GUARD FIRST!!!
