@@ -21,7 +21,7 @@ chip soc/intel/meteorlake
 
 		device ref uart0 on end	# debug console
 
-		# espi ec (ite it5571e); acpi in acpi/ec_device.asl, sci on gpe 0x6E
+		# espi ec (ite it5571e); acpi in acpi/ec.asl, sci on gpe 0x6E
 		device ref soc_espi on end
 
 		# usb2 map from hardware; HS08 is type-c, the rest type-a or internal

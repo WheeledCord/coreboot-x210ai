@@ -10,22 +10,22 @@ Scope (\_SB.PCI0.LPCB)
 	Device (H_EC)
 	{
 		Name (_HID, EisaId ("PNP0C09") /* Embedded Controller Device */)
-		Name (_UID, One)
-		Name (ECAV, One)
-		Name (BNUM, Zero)
-		Name (ECTK, One)
+		Name (_UID, 1)
+		Name (ECAV, 1)
+		Name (BNUM, 0)
+		Name (ECTK, 1)
 		Mutex (EHLD, 0x00)
 		Mutex (ECMT, 0x00)
-		Name (VPWR, One)
+		Name (VPWR, 1)
 
 		Method (_STA, 0, NotSerialized)
 		{
-			If ((ECON == One))
+			If ((ECON == 1))
 			{
 				Return (0x0F)
 			}
 
-			Return (Zero)
+			Return (0)
 		}
 
 		Method (_CRS, 0, Serialized)
@@ -48,7 +48,7 @@ Scope (\_SB.PCI0.LPCB)
 		Name (_PRW, Package () { 0x6E, 4 })
 
 		/* authoritative ec-ram layout, accessed via the acpi ec at 0x62/0x66. */
-		OperationRegion (ECF2, EmbeddedControl, Zero, 0xFF)
+		OperationRegion (ECF2, EmbeddedControl, 0, 0xFF)
 		Field (ECF2, ByteAcc, Lock, Preserve)
 		{
 			ECFM,   8,
@@ -80,14 +80,14 @@ Scope (\_SB.PCI0.LPCB)
 			{
 				If ((_REV >= 0x02))
 				{
-					ECAV = One
+					ECAV = 1
 				}
 
-				ECTK = Zero
+				ECTK = 0
 			}
 
 			Local0 = Acquire (ECMT, 0xA000)
-			If ((Local0 == Zero))
+			If ((Local0 == 0))
 			{
 				If (ECAV)
 				{
@@ -107,12 +107,12 @@ Scope (\_SB.PCI0.LPCB)
 		/* on embeddedcontrol availability, init ec-present + power/battery state. */
 		Method (_REG, 2, NotSerialized)
 		{
-			If (((Arg0 == 0x03) && (Arg1 == One)))
+			If (((Arg0 == 0x03) && (Arg1 == 1)))
 			{
-				ECAV = One
-				BNUM = Zero
+				ECAV = 1
+				BNUM = 0
 				BNUM |= ((ECRD (RefOf (B1ST)) & 0x08) >> 0x03)
-				If ((BNUM == Zero))
+				If ((BNUM == 0))
 				{
 					PWRS = ECRD (RefOf (VPWR))
 				}
@@ -133,7 +133,7 @@ Scope (\_SB.PCI0.LPCB)
 		/* battery status change. */
 		Method (_Q0B, 0, NotSerialized)
 		{
-			BNUM = Zero
+			BNUM = 0
 			BNUM |= ((ECRD (RefOf (B1ST)) & 0x08) >> 0x03)
 			Notify (BAT0, 0x81)
 			Notify (BAT0, 0x80)
@@ -152,145 +152,19 @@ Scope (\_SB.PCI0.LPCB)
 			Notify (PWRB, 0x80)
 		}
 
-		Device (BAT0)
-		{
-			Name (_HID, EisaId ("PNP0C0A") /* Control Method Battery */)
-			Name (_UID, Zero)
-			Method (_STA, 0, NotSerialized)
-			{
-				If ((BNUM & One))
-				{
-					Return (0x1F)
-				}
-				Else
-				{
-					Return (0x0B)
-				}
-			}
-
-			Method (_BIF, 0, Serialized)
-			{
-				Name (BPK1, Package (0x0D)
-				{
-					Zero,
-					0xFFFFFFFF,
-					0xFFFFFFFF,
-					One,
-					0xFFFFFFFF,
-					Zero,
-					Zero,
-					0x0100,
-					0x40,
-					"BASE-BAT",
-					"123456789",
-					"LiP",
-					"Simplo"
-				})
-				If (ECAV)
-				{
-					Local0 = ECRD (RefOf (B1DV))
-					Local1 = ECRD (RefOf (B1FC))
-					If ((Local0 && Local1))
-					{
-						BPK1 [One] = ((ECRD (RefOf (B1DC)) * Local0) / 0x03E8)
-						Local2 = (Local0 * Local1)
-						BPK1 [0x02] = (Local2 / 0x03E8)
-						BPK1 [0x04] = Local0
-						BPK1 [0x05] = (Local2 / 0x2710)
-						BPK1 [0x06] = (Local2 / 0x61A8)
-						BPK1 [0x07] = 0x0100
-						BPK1 [0x08] = 0x40
-					}
-				}
-
-				Return (BPK1)
-			}
-
-			Method (_BIX, 0, Serialized)
-			{
-				Name (BPK1, Package (0x15)
-				{
-					One,
-					Zero,
-					0xFFFFFFFF,
-					0xFFFFFFFF,
-					One,
-					0xFFFFFFFF,
-					Zero,
-					Zero,
-					0x64,
-					0x00017318,
-					Zero,
-					Zero,
-					Zero,
-					Zero,
-					0x0100,
-					0x40,
-					"BASE-BAT",
-					"123456789",
-					"LiP",
-					"Simplo",
-					One
-				})
-				If (ECAV)
-				{
-					Local0 = ECRD (RefOf (B1DV))
-					Local1 = ECRD (RefOf (B1FC))
-					If ((Local0 && Local1))
-					{
-						BPK1 [0x02] = ((ECRD (RefOf (B1DC)) * Local0) / 0x03E8)
-						Local2 = (Local0 * Local1)
-						BPK1 [0x03] = (Local2 / 0x03E8)
-						BPK1 [0x05] = Local0
-						BPK1 [0x06] = (Local2 / 0x2710)
-						BPK1 [0x07] = (Local2 / 0x61A8)
-						BPK1 [0x08] = ECRD (RefOf (BICC))
-					}
-				}
-
-				Return (BPK1)
-			}
-
-			Method (_BST, 0, Serialized)
-			{
-				Name (PKG1, Package (0x04)
-				{
-					0xFFFFFFFF,
-					0xFFFFFFFF,
-					0xFFFFFFFF,
-					0xFFFFFFFF
-				})
-				If (ECAV)
-				{
-					PKG1 [Zero] = (ECRD (RefOf (B1ST)) & 0x07)
-					Local1 = ECRD (RefOf (B1FV))
-					Local0 = (ECRD (RefOf (B1CR)) * Local1)
-					Local0 = (Local0 / 0x03E8)
-					PKG1 [One] = Local0
-					PKG1 [0x02] = ((ECRD (RefOf (B1RC)) * ECRD (RefOf (B1DV))) / 0x03E8)
-					PKG1 [0x03] = Local1
-				}
-
-				Return (PKG1)
-			}
-
-			Method (_PCL, 0, NotSerialized)
-			{
-				Return (_SB)
-			}
-		}
+		#include "battery.asl"
 
 		Device (LID0)
 		{
 			Name (_HID, EisaId ("PNP0C0D") /* Lid Device */)
 			Method (_STA, 0, NotSerialized)
 			{
-				If ((ECON == One))
+				If ((ECON == 1))
 				{
 					Return (0x0F)
 				}
 
-				Return (Zero)
+				Return (0)
 			}
 
 			Method (_LID, 0, NotSerialized)
@@ -308,12 +182,12 @@ Scope (\_SB)
 		Name (_HID, "ACPI0003" /* Power Source Device */)
 		Method (_STA, 0, NotSerialized)
 		{
-			If ((ECON == One))
+			If ((ECON == 1))
 			{
 				Return (0x0F)
 			}
 
-			Return (Zero)
+			Return (0)
 		}
 
 		Method (_PSR, 0, NotSerialized)
@@ -333,7 +207,7 @@ Scope (\_SB)
 	Device (PWRB)
 	{
 		Name (_HID, EisaId ("PNP0C0C") /* Power Button Device */)
-		Name (PBST, One)
+		Name (PBST, 1)
 		Method (_STA, 0, NotSerialized)
 		{
 			Return (0x0F)
