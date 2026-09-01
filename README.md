@@ -27,7 +27,7 @@ If the output is `90000255`, it means the board is in manufacturing mode, and co
 
 The X210AI ships with Intel Boot Guard enabled, so the CPU won't run coreboot until it's disabled.
 
-Because the board is in manufacturing mode, Boot Guard's config isn't fused and lives in editable SPI flash. You can disable it via Intel's MFIT, but this isn't accessible to most people (If you can find it, use it instead), so I provide an image [here](https://github.com/WheeledCord/coreboot-x210ai/releases). Back up your chip, then flash it internally:
+Because the board is in manufacturing mode, Boot Guard's config isn't fused and lives in editable SPI flash. You can disable it via Intel's MFIT. Back up your chip, then flash it internally:
 
 ```sh
 flashrom -p internal -r factory_backup.bin
@@ -36,7 +36,7 @@ flashrom -p internal -w x210ai-bootguard-disabled.bin
 
 ## Making an image with MFIT
 
-For many reasons, you may not want to flash the random binary I provided. If you have a version of MFIT that supports the MTL-P layout (I use version 18.0.10.2285), you can modify your own image to disable Boot Guard yourself.
+If you have a version of MFIT that supports the MTL-P layout (I use version 18.0.10.2285), you can modify your own image to disable Boot Guard yourself.
 
 Decompose your factory dump to get its config as editable XML:
 
