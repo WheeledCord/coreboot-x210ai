@@ -1,6 +1,6 @@
 # Coreboot for the X210AI
 
-A coreboot port for the X210AI: a Meteor Lake (Core Ultra 7 165H / 9 185H) mainboard for the ThinkPad X200/X201 chassis, with DDR5 SODIMM, two M.2 NVMe, a 2.5" SATA bay, and two USB C (one Thunderbolt 4).
+A coreboot port for the X210AI: a Meteor Lake (Core Ultra 7 165H / 9 185H) replacement mainboard for the ThinkPad X200/X201 chassis, with DDR5 SODIMM, two M.2 NVMe, a 2.5" SATA bay, and two USB C (one is Thunderbolt 4).
 
 ## Building
 
@@ -13,7 +13,7 @@ make menuconfig                    # Mainboard -> 51NB -> X210AI
 make
 ```
 
-Output is `build/coreboot.rom`. Only the BIOS region is built — the factory descriptor and ME stay on the chip.
+Output is `build/coreboot.rom`. Only the BIOS region is built here.
 
 ## Disabling Boot Guard (do this first)
 
@@ -49,6 +49,8 @@ In `config.xml`, find `BtGuardProfileConfig` and change its value from `Debug Pr
 ```sh
 wine mfit.exe --decompose dump.bin --loadconfig config.xml --build dump_bgdisabled.bin
 ```
+
+MFIT is a pain to find and I probably cannot publish it legally but try searching for `Flash image tool 18.0.10.2285` which might help.
 
 ## Flashing
 
