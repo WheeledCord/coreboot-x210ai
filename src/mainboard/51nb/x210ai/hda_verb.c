@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* alc1220 analog codec, pin config from this board's hda dump */
-
 #include <device/azalia_device.h>
 
 static const u32 realtek_alc1220_verbs[] = {
@@ -24,7 +22,7 @@ static const u32 realtek_alc1220_verbs[] = {
 		AZALIA_JACK_PRESENCE_DETECT,
 		1, 0
 	)),
-	AZALIA_PIN_CFG(0, 0x15, 0x40000000), // does not describe a jack or internal device
+	AZALIA_PIN_CFG(0, 0x15, 0x40000000),
 	AZALIA_PIN_CFG(0, 0x16, AZALIA_PIN_CFG_NC(0)),
 	AZALIA_PIN_CFG(0, 0x17, AZALIA_PIN_CFG_NC(0)),
 	AZALIA_PIN_CFG(0, 0x18, AZALIA_PIN_DESC(
@@ -55,7 +53,7 @@ static const u32 realtek_alc1220_verbs[] = {
 		2, 0
 	)),
 	AZALIA_PIN_CFG(0, 0x1b, AZALIA_PIN_CFG_NC(0)),
-	AZALIA_PIN_CFG(0, 0x1d, 0x40a5b105), // does not describe a jack or internal device
+	AZALIA_PIN_CFG(0, 0x1d, 0x40a5b105),
 	AZALIA_PIN_CFG(0, 0x1e, AZALIA_PIN_DESC(
 		AZALIA_JACK,
 		AZALIA_EXTERNAL_PRIMARY_CHASSIS | AZALIA_REAR,

@@ -141,7 +141,6 @@ void mainboard_memory_init_params(FSPM_UPD *mupd)
 	}
 
 	mupd->FspmConfig.PchHdaSubSystemIds =
-		starlabs_hda_selected_pci_subsystem_id(
-			STARLABS_HDA_POLICY_ALC235_STARFIGHTER);
+		STARLABS_HDA_PCI_SUBSYSTEM_ID(STARLABS_HDA_POLICY_ALC235_STARFIGHTER);
 	mupd->FspmConfig.PsysPmax = 0;
 };

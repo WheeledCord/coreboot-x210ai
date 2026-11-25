@@ -16,6 +16,6 @@ void mainboard_silicon_init_params(FSP_S_CONFIG *params)
 {
 	params->PchEspiHostC10ReportEnable = 0;
 
-	/* hot-plug keeps port 0's phy powered so the sata drive trains */
+	/* SATA bay requires hot-plug for link training */
 	params->SataPortsHotPlug[0] = 1;
 }

@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-#include <common/hda.h>
 #include <device/azalia_codec/realtek.h>
 #include <device/azalia_device.h>
 #include <option.h>
@@ -46,7 +45,7 @@ static const uint32_t microphone_disable_verb[] = {
 
 void mainboard_azalia_program_runtime_verbs(uint8_t *base, uint32_t viddid)
 {
-	starlabs_hda_program_legacy_subsystem_id_verbs(base, viddid);
+	(void)viddid;
 
 	if (get_uint_option("microphone", 1) == 0)
 		azalia_program_verb_table(base, microphone_disable_verb,

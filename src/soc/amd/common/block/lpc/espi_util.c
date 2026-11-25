@@ -26,12 +26,8 @@ __weak void mb_set_up_early_espi(void)
 
 static uintptr_t espi_get_bar(void)
 {
-	const uintptr_t espi_offset =
-		CONFIG(SOC_AMD_COMMON_BLOCK_ESPI_USE_ESPI1) ?
-			ESPI1_OFFSET_FROM_BAR : ESPI_OFFSET_FROM_BAR;
-
 	if (ENV_X86 && !espi_bar)
-		espi_update_static_bar(lpc_get_spibase() + espi_offset);
+		espi_update_static_bar(lpc_get_spibase() + ESPI_OFFSET_FROM_BAR);
 	return espi_bar;
 }
 

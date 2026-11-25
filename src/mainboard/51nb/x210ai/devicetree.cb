@@ -3,13 +3,21 @@
 chip soc/intel/meteorlake
 
 	register "eist_enable" = "true"
-	register "tcc_offset" = "8"
+	register "tcc_offset" = "8"	# 102 C
 
-	# s0ix_enable = false -> real s3, not s0ix (needs INTEL_TME off, see Kconfig)
-	register "s0ix_enable" = "false"
+	register "power_limits_config[MTL_P_682_482_CORE]" = "{
+		.tdp_pl1_override = 28,
+		.tdp_pl2_override = 64,
+		.tdp_pl4 = 65,
+	}"
+
+	# GPP_A (A12) and GPP_E (E03) carry SCI pads
+	register "pmc_gpe0_dw0" = "PMC_GPP_A"
+	register "pmc_gpe0_dw1" = "PMC_GPP_D"
+	register "pmc_gpe0_dw2" = "PMC_GPP_E"
 
 	device domain 0 on
-		# fsp-gop + vbt; internal edp on ddi a, external hdmi/dp on ddi b
+		# eDP on DDI A, HDMI on DDI B
 		device ref igpu on
 			register "ddi_port_A_config" = "1"
 			register "ddi_ports_config" = "{
@@ -19,91 +27,162 @@ chip soc/intel/meteorlake
 			register "gfx" = "GMA_DEFAULT_PANEL(0)"
 		end
 
-		device ref uart0 on end	# debug console
+		device ref dtt on end
+		device ref vpu on end
 
-		# espi ec (ite it5571e); acpi in acpi/ec.asl, sci on gpe 0x6E
-		device ref soc_espi on end
+		device ref uart0 on
+			register "serial_io_uart_mode[PchSerialIoIndexUART0]" = "PchSerialIoSkipInit"
+		end
 
-		# usb2 map from hardware; HS08 is type-c, the rest type-a or internal
+		device ref pmc_shared_sram on end
+
 		device ref xhci on
 			register "usb2_ports" = "{
 				[1] = USB2_PORT_MID(OC_SKIP),		/* HS02 card reader */
-				[2] = USB2_PORT_MID(OC_SKIP),		/* HS03 type-a */
+				[2] = USB2_PORT_MID(OC_SKIP),		/* HS03 / PCH SS01 */
 				[4] = USB2_PORT_MID(OC_SKIP),		/* HS05 fingerprint */
-				[5] = USB2_PORT_MID(OC_SKIP),		/* HS06 type-a */
-				[6] = USB2_PORT_MID(OC_SKIP),		/* HS07 type-a */
-				[7] = USB2_PORT_TYPE_C(OC_SKIP),	/* HS08 type-c */
-				[8] = USB2_PORT_MID(OC_SKIP),		/* HS09 type-a */
-				[9] = USB2_PORT_MID(OC_SKIP),		/* HS10 bluetooth */
+				[5] = USB2_PORT_TYPE_C(OC_SKIP),	/* HS06 / TCSS SS02 */
+				[6] = USB2_PORT_MID(OC_SKIP),		/* HS07 Type-A */
+				[7] = USB2_PORT_MID(OC_SKIP),		/* HS08 / PCH SS02 */
+				[8] = USB2_PORT_MID(OC_SKIP),		/* HS09 Type-A */
+				[9] = USB2_PORT_MID(OC_SKIP),		/* HS10 Bluetooth */
 			}"
-			# 2 pch superspeed ports (soc max); type-c superspeed is on tcss below
 			register "usb3_ports" = "{
 				[0] = USB3_PORT_DEFAULT(OC_SKIP),
 				[1] = USB3_PORT_DEFAULT(OC_SKIP),
 			}"
+			chip drivers/usb/acpi
+				device ref xhci_root_hub on
+					chip drivers/usb/acpi
+						register "desc" = ""Card Reader""
+						register "type" = "UPC_TYPE_INTERNAL"
+						device ref usb2_port2 on end
+					end
+					chip drivers/usb/acpi
+						register "desc" = ""USB2 Type-A""
+						register "type" = "UPC_TYPE_A"
+						register "group" = "ACPI_PLD_GROUP(0, 3)"
+						device ref usb2_port3 on end
+					end
+					chip drivers/usb/acpi
+						register "desc" = ""Fingerprint""
+						register "type" = "UPC_TYPE_INTERNAL"
+						device ref usb2_port5 on end
+					end
+					chip drivers/usb/acpi
+						register "desc" = ""USB2 Type-C (TBT)""
+						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
+						register "group" = "ACPI_PLD_GROUP(0, 2)"
+						device ref usb2_port6 on end
+					end
+					chip drivers/usb/acpi
+						register "desc" = ""USB2 Type-A""
+						register "type" = "UPC_TYPE_A"
+						register "group" = "ACPI_PLD_GROUP(0, 7)"
+						device ref usb2_port7 on end
+					end
+					chip drivers/usb/acpi
+						register "desc" = ""USB2 Type-C""
+						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
+						register "group" = "ACPI_PLD_GROUP(0, 8)"
+						device ref usb2_port8 on end
+					end
+					chip drivers/usb/acpi
+						register "desc" = ""USB2 Type-A""
+						register "type" = "UPC_TYPE_A"
+						register "group" = "ACPI_PLD_GROUP(0, 9)"
+						device ref usb2_port9 on end
+					end
+					chip drivers/usb/acpi
+						register "desc" = ""Bluetooth""
+						register "type" = "UPC_TYPE_INTERNAL"
+						device ref usb2_port10 on end
+					end
+					chip drivers/usb/acpi
+						register "desc" = ""USB3 Type-A""
+						register "type" = "UPC_TYPE_USB3_A"
+						register "group" = "ACPI_PLD_GROUP(0, 3)"
+						device ref usb3_port1 on end
+					end
+					chip drivers/usb/acpi
+						register "desc" = ""USB3 Type-C""
+						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
+						register "group" = "ACPI_PLD_GROUP(0, 8)"
+						device ref usb3_port2 on end
+					end
+				end
+			end
 		end
 
-		# sata os drive; only port 0 is wired
 		device ref sata on
-			register "sata_salp_support" = "false"
 			register "sata_pwr_optimize_disable" = "true"
 			register "sata_ports_enable[0]" = "true"
 		end
 
 		device ref hda on
-			# enable the alc1220 sdi link, else only the hdmi codec appears
-			register "pch_hda_audio_link_hda_enable" = "1"
-			register "pch_hda_sdi_enable[0]" = "1"
-			register "pch_hda_idisp_codec_enable" = "1"
+			register "pch_hda_audio_link_hda_enable" = "true"
+			register "pch_hda_sdi_enable[0]" = "true"
+			register "pch_hda_idisp_codec_enable" = "true"
 			register "pch_hda_idisp_link_frequency" = "HDA_LINKFREQ_96MHZ"
 			register "pch_hda_idisp_link_tmode" = "HDA_TMODE_8T"
 		end
 
-		# pcie by physical root port, not the swapped bdf; clocks from ssdt SCLK
-		device ref pcie_rp4 on	# RTL8168 ethernet
-			register "pcie_rp[PCH_RP(4)]" = "{
+		device ref pcie_rp4 on	# RTL8168 Ethernet
+			register "pcie_rp[PCIE_RP(4)]" = "{
 				.clk_src = 3,
 				.clk_req = 3,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end
-		device ref pcie_rp5 on	# RTL8822BE wifi
-			register "pcie_rp[PCH_RP(5)]" = "{
+		device ref pcie_rp5 on	# RTL8822BE Wi-Fi
+			register "pcie_rp[PCIE_RP(5)]" = "{
 				.clk_src = 2,
 				.clk_req = 2,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end
-		device ref pcie_rp10 on	# cpu m.2 nvme
-			register "pcie_rp[PCH_RP(10)]" = "{
+		device ref pcie_rp10 on	# M.2 NVMe
+			register "pcie_rp[PCIE_RP(10)]" = "{
 				.clk_src = 8,
 				.clk_req = 8,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end
-		device ref pcie_rp11 on	# cpu m.2 nvme
-			register "pcie_rp[PCH_RP(11)]" = "{
+		device ref pcie_rp11 on	# M.2 NVMe
+			register "pcie_rp[PCIE_RP(11)]" = "{
 				.clk_src = 7,
 				.clk_req = 7,
 				.flags = PCIE_RP_LTR | PCIE_RP_AER,
 			}"
 		end
 
-		# usb4 / thunderbolt
-		device ref tbt_pcie_rp0 on end
+		device ref tbt_pcie_rp1 on end
 		device ref tcss_xhci on
-			register "tcss_ports[0]" = "TCSS_PORT_DEFAULT(OC_SKIP)"
+			register "tcss_ports[1]" = "TCSS_PORT_DEFAULT(OC_SKIP)"
 			chip drivers/usb/acpi
 				device ref tcss_root_hub on
 					chip drivers/usb/acpi
-						register "desc" = ""USB Type-C""
+						register "desc" = ""USB3 Type-C (TBT)""
 						register "type" = "UPC_TYPE_C_USB2_SS_SWITCH"
-						device ref tcss_usb3_port0 on end
+						register "group" = "ACPI_PLD_GROUP(0, 2)"
+						device ref tcss_usb3_port1 on end
 					end
 				end
 			end
 		end
 		device ref tcss_dma0 on end
+
+		device ref pmc hidden
+			chip drivers/intel/pmc_mux
+				device generic 0 on
+					chip drivers/intel/pmc_mux/conn
+						use usb2_port6 as usb2_port
+						use tcss_usb3_port1 as usb3_port
+						device generic 0 on end
+					end
+				end
+			end
+		end
 
 		device ref smbus on end
 	end

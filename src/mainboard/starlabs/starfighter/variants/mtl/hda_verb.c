@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-#include <common/hda.h>
 #include <device/azalia_device.h>
 #include <device/azalia_codec/realtek.h>
 
@@ -9,8 +8,7 @@ static const u32 realtek_alc235_verbs[] = {
 	AZALIA_RESET(0x1),
 
 	/* HDA Codec Subsystem ID */
-	AZALIA_SUBVENDOR(0, STARLABS_HDA_CODEC_SUBSYSTEM_ID(
-		STARLABS_HDA_POLICY_ALC235_STARFIGHTER)),
+	AZALIA_SUBVENDOR(0, 0x20147017),
 
 	/* Pin Widget Verb-table */
 	AZALIA_PIN_CFG(0, ALC269_DMIC12,	AZALIA_PIN_DESC(
@@ -79,8 +77,7 @@ static struct azalia_codec mainboard_azalia_codecs[] = {
 	{
 		.name         = "Realtek ALC235",
 		.vendor_id    = 0x10ec0235,
-		.subsystem_id = STARLABS_HDA_CODEC_SUBSYSTEM_ID(
-			STARLABS_HDA_POLICY_ALC235_STARFIGHTER),
+		.subsystem_id = 0x20147017,
 		.address      = 0,
 		.verbs        = realtek_alc235_verbs,
 		.verb_count   = ARRAY_SIZE(realtek_alc235_verbs),

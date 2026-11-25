@@ -5,17 +5,17 @@ if BOARD_51NB_X210AI
 config BOARD_SPECIFIC_OPTIONS
 	def_bool y
 	select BOARD_ROMSIZE_KB_32768
-	select CONSOLE_CBMEM
+	select DRIVERS_INTEL_PMC
 	select FSP_TYPE_IOT
 	select HAVE_ACPI_RESUME
 	select HAVE_ACPI_TABLES
 	select INTEL_GMA_HAVE_VBT
 	select INTEL_LPSS_UART_FOR_CONSOLE
 	select NO_UART_ON_SUPERIO
+	select PMC_IPC_ACPI_INTERFACE
 	select SOC_INTEL_COMMON_BLOCK_HDA_VERB
-	select SOC_INTEL_CRASHLOG
-	select SOC_INTEL_METEORLAKE_U_H
 	select SOC_INTEL_ENABLE_USB4_PCIE_RESOURCES
+	select SOC_INTEL_METEORLAKE_U_H
 	select SPD_READ_BY_WORD
 	select SYSTEM_TYPE_LAPTOP
 
@@ -25,17 +25,11 @@ config MAINBOARD_DIR
 config MAINBOARD_PART_NUMBER
 	default "X210AI"
 
-config MAINBOARD_SMBIOS_PRODUCT_NAME
-	default "X210AI"
-
-config MAINBOARD_VERSION
-	default "1.0"
-
 config CONSOLE_POST
 	default y
 
 config DIMM_SPD_SIZE
-	default 1024	# ddr5 spd5 hub needs >= 1024
+	default 1024
 
 config FMDFILE
 	default "src/mainboard/\$(CONFIG_MAINBOARD_DIR)/board.fmd"
@@ -46,9 +40,8 @@ config UART_FOR_CONSOLE
 config USE_PM_ACPI_TIMER
 	default n
 
-# tme's per-boot dram key doesn't survive s3, so leaving INTEL_TME on breaks
-# resume. it defaults on for meteor lake, so force it off.
-config INTEL_TME
+# Retain the memory encryption key across warm resets for S3 resume.
+config TME_KEY_REGENERATION_ON_WARM_BOOT
 	default n
 
 endif

@@ -1,9 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 
-/* soc/gpio.h: gpio pm macros for the generated gpio acpi */
-#include <soc/gpio.h>
-
 #include <acpi/acpi.h>
+#include <soc/gpe.h>
+
 DefinitionBlock(
 	"dsdt.aml",
 	"DSDT",
@@ -23,6 +22,7 @@ DefinitionBlock(
 		#include <soc/intel/common/block/acpi/acpi/northbridge.asl>
 		#include <soc/intel/meteorlake/acpi/southbridge.asl>
 		#include <soc/intel/meteorlake/acpi/tcss.asl>
+		#include <drivers/intel/gma/acpi/default_brightness_levels.asl>
 	}
 
 	#include <southbridge/intel/common/acpi/sleepstates.asl>
@@ -32,5 +32,5 @@ DefinitionBlock(
 		#include <drivers/pc80/pc/ps2_controller.asl>
 	}
 
-	#include "acpi/mainboard.asl"
+	#include "acpi/ec.asl"
 }

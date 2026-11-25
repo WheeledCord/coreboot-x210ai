@@ -383,11 +383,6 @@ struct elog_event_extended_event {
 #define ELOG_TYPE_FW_SPLASH_SCREEN        0xbb
 
 /*
- * Events related to RAM dump mode
- */
-#define ELOG_TYPE_RAMDUMP                 0xbc
-
-/*
  * Events related to CSE sync
  */
 #define ELOG_TYPE_FW_CSE_SYNC             0xbd

@@ -122,7 +122,7 @@ Maintainers List (try to look for most precise areas first)
 M:	Fionn Cassidy <fionn.cassidy@proton.me>
 S:	Maintained
 F:	src/mainboard/51nb/x210ai/
-F:	Documentation/mainboard/51nb/x210ai.md
+F:	Documentation/mainboard/51nb/x210ai.*
 
 51NB MAINBOARDS
 S:	Orphan

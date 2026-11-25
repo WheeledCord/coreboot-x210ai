@@ -13,7 +13,12 @@ ramstage-$(CONFIG_MAINBOARD_USE_LIBGFXINIT) += variants/$(VARIANT_DIR)/gma-mainb
 
 subdirs-y += variants/$(VARIANT_DIR)
 
-ifeq ($(CONFIG_HAVE_SPD_IN_CBFS),y)
+ifeq ($(CONFIG_BOARD_LENOVO_T470S),y)
+subdirs-y += variants/$(VARIANT_DIR)/memory
+subdirs-y += spd
+endif
+
+ifeq ($(CONFIG_BOARD_LENOVO_X280),y)
 subdirs-y += variants/$(VARIANT_DIR)/memory
 subdirs-y += spd
 endif

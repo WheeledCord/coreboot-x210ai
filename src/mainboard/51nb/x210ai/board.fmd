@@ -1,5 +1,5 @@
-# flash layout matching the vendor descriptor; only the bios region is built and
-# flashed, the descriptor/me/deviceexp2 stay on-chip (see Documentation).
+## SPDX-License-Identifier: GPL-2.0-only
+
 FLASH 32M {
 	SI_DESC 16K
 	SI_ME 8260K
